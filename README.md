@@ -98,6 +98,20 @@ fun method1() {
 }}
 ```
 
+## UML Example
+
+```plantuml
+@startuml
+class TestClass {
+-name : String
+-age : Int
+
++method1()
++method2()
+}
+@enduml
+```
+
 # Запуск проекта
 
 Собрать проект:
