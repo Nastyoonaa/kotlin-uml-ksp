@@ -1,4 +1,10 @@
+import com.example.TestClass
+import com.example.generated.uml
+import uml.PlantUmlRenderer
+
 fun main() {
-    println("UML Processor готов!")
-    println("Запусти ./gradlew kspKotlin")
+    val test = TestClass("Iydyshka", 25)
+    val uml = test.uml()
+    val plant = PlantUmlRenderer.render(uml)
+    println(plant)
 }

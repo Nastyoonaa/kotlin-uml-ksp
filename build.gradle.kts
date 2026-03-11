@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.0.20"
     id("com.google.devtools.ksp") version "2.0.20-1.0.25"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
     application
 }
 
@@ -11,6 +12,11 @@ repositories {
     mavenCentral()
 }
 
+ktlint {
+    filter {
+        exclude { it.file.path.contains("generated") }
+    }
+}
 dependencies {
     implementation("net.sourceforge.plantuml:plantuml:1.2024.6")
     implementation(kotlin("stdlib-jdk8"))

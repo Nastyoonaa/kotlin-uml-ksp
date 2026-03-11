@@ -1,55 +1,75 @@
 package com.example.processor
 
+import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate
-import java.io.OutputStreamWriter
 
 class UmlProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger
 ) : SymbolProcessor {
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        val symbols = resolver.getSymbolsWithAnnotation("com.example.processor.UmlDiagram")
-            .filterIsInstance<KSClassDeclaration>()
-
-        symbols.filter { !it.validate() }.forEach { it.validate() }
-        symbols.filter { it.validate() }.forEach { generateUml(it) }
-
-        return emptyList()
+        val symbols = resolver
+            .getSymbolsWithAnnotation("com.example.processor.UmlDiagram")
+        val invalidSymbols = mutableListOf<KSAnnotated>()
+        symbols.forEach { symbol ->
+            if (!symbol.validate()) {
+                invalidSymbols += symbol
+                return@forEach
+            }
+            val classDeclaration = symbol as? KSClassDeclaration ?: return@forEach
+            generateUml(classDeclaration)
+        }
+        return invalidSymbols
     }
 
     private fun generateUml(classDeclaration: KSClassDeclaration) {
-        val properties = classDeclaration.getAllProperties()
-            .joinToString("\n") {
-                "  -${it.simpleName.asString()} : ${it.type.resolve().declaration.simpleName.asString()}"
-            }
-        val packageName = classDeclaration.containingFile!!.packageName.asString()
+        val containingFile = classDeclaration.containingFile ?: return
         val className = classDeclaration.simpleName.asString()
 
-        val methods = classDeclaration.getAllFunctions()
-            .filter { it.simpleName.asString() != "<init>" }
-            .joinToString("\n") { "  +${it.simpleName.asString()}()" }
+        val properties = classDeclaration.primaryConstructor
+            ?.parameters
+            ?.map { parameter ->
+                val name = parameter.name?.asString() ?: "unknown"
+                val type = parameter.type.resolve().declaration.simpleName.asString()
+                """UmlProperty("$name", "$type")"""
+            }
+            ?.joinToString(",\n")
+            ?: ""
 
-        val uml = """
-@startuml
-class $className {
-$properties
+        val methods = classDeclaration.getDeclaredFunctions()
+            .map { function ->
+                """UmlMethod("${function.simpleName.asString()}")"""
+            }
+            .joinToString(",\n")
+        val code = """
+package com.example.generated
 
-$methods
+import com.example.$className
+import uml.UmlClass
+import uml.UmlProperty
+import uml.UmlMethod
+
+fun $className.uml(): UmlClass {
+    return UmlClass(
+        name = "$className",
+        properties = listOf(
+            $properties
+        ),
+        methods = listOf(
+            $methods
+        )
+    )
 }
-@enduml
 """.trimIndent()
 
         val file = codeGenerator.createNewFile(
-            dependencies = Dependencies(false, classDeclaration.containingFile!!),
-            packageName = "",
-            fileName = "${className}Diagram",
-            extensionName = "puml"
+            dependencies = Dependencies(false, containingFile),
+            packageName = "com.example.generated",
+            fileName = "${className}Uml"
         )
 
-        OutputStreamWriter(file).use { it.write(uml) }
-
-        logger.warn("Сгенерирован UML для $className", classDeclaration)
+        file.writer().use { it.write(code) }
     }
 }
