@@ -24,6 +24,10 @@ class UmlDsl {
         return lines.joinToString("\n")
     }
 
+    fun dependency(from: String, to: String, type: String) {
+        lines += "$from $type $to"
+    }
+
     class ClassDsl(private val name: String) {
         private val body = mutableListOf<String>()
 
@@ -35,7 +39,7 @@ class UmlDsl {
         }
 
         fun method(name: String) {
-            body += "  +$name()"
+            body += "  +$name"
         }
 
         fun build(): String {

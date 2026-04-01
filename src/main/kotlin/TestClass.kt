@@ -2,12 +2,15 @@ package com.example
 
 import com.example.processor.UmlDiagram
 
+class User(val name: String)
+
+class Order(val user: User)
+
 @UmlDiagram
 class TestClass(
-    val name: String,
-    val age: Int,
+    val order: Order
 ) {
-    fun method1() {}
-
-    fun method2() {}
+    fun process(user: User): Order {
+        return order
+    }
 }
