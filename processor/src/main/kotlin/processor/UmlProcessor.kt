@@ -13,48 +13,47 @@ class UmlProcessor(
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver
             .getSymbolsWithAnnotation("com.example.processor.UmlDiagram")
-        val invalidSymbols = mutableListOf<KSAnnotated>()
-        symbols.forEach { symbol ->
-            if (!symbol.validate()) {
-                invalidSymbols += symbol
-                return@forEach
-            }
-            val classDeclaration = symbol as? KSClassDeclaration ?: return@forEach
-            val allClasses = collectAllClasses(classDeclaration)
-                .filter { it.packageName.asString().startsWith(BASE_PACKAGE) }
-            allClasses.forEach { generateUml(it) }
-        }
-        return invalidSymbols
+            .filterIsInstance<KSClassDeclaration>()
+
+        val invalid = symbols.filterNot { it.validate() }.toList()
+        val valid = symbols.filter { it.validate() }.toList()
+
+        val allClasses = valid
+            .flatMap(::collectAllClasses)
+            .filter { it.packageName.asString().startsWith(BASE_PACKAGE) }
+            .toSet()
+
+        allClasses.forEach(::generateUml)
+        generateProjectUml(allClasses.toList())
+
+        return invalid
     }
 
     private fun generateUml(classDeclaration: KSClassDeclaration) {
         val containingFile = classDeclaration.containingFile ?: return
         val className = classDeclaration.simpleName.asString()
+        val functionName = className.replaceFirstChar { it.lowercase() } + "Uml"
+        val packageName = classDeclaration.packageName.asString()
+        val layer = resolveLayer(classDeclaration)
 
-        val propertiesList = classDeclaration.primaryConstructor
+        val properties = classDeclaration.primaryConstructor
             ?.parameters
-            ?.map { parameter ->
-                val name = parameter.name?.asString() ?: "unknown"
-                val typeDecl = parameter.type.resolve().declaration
-                val type = typeDecl.simpleName.asString()
-                name to type
+            .orEmpty()
+            .joinToString(",\n") {
+                val name = it.name?.asString() ?: "unknown"
+                val type = it.type.resolve().declaration.simpleName.asString()
+                """UmlProperty("$name", "$type")"""
             }
-            ?: emptyList()
 
-        val properties = propertiesList.joinToString(",\n") { (name, type) ->
-            """UmlProperty("$name", "$type")"""
-        }
-
-        val methodsList = classDeclaration.getDeclaredFunctions()
+        val methods = classDeclaration.getDeclaredFunctions()
             .filterNot { it.simpleName.asString() == "<init>" }
-            .map { function ->
+            .joinToString(",\n") { function ->
                 val name = function.simpleName.asString()
 
-                val params = function.parameters.map { param ->
-                    val paramName = param.name?.asString() ?: "param"
-                    val typeDecl = param.type.resolve().declaration
-                    val type = typeDecl.simpleName.asString()
-                    paramName to type
+                val params = function.parameters.joinToString(", ") { param ->
+                    val pName = param.name?.asString() ?: "param"
+                    val pType = param.type.resolve().declaration.simpleName.asString()
+                    "$pName: $pType"
                 }
 
                 val returnType = function.returnType
@@ -64,72 +63,58 @@ class UmlProcessor(
                     ?.asString()
                     ?: "Unit"
 
-                Triple(name, params, returnType)
+                """UmlMethod("$name", "$params", "$returnType")"""
             }
 
-        val methods = methodsList.joinToString(",\n") { (name, params, returnType) ->
-            val paramsString = params.joinToString(", ") { (n, t) -> "$n: $t" }
-            """UmlMethod("$name", "$paramsString", "$returnType")"""
-        }
-
-        val dependenciesList = mutableListOf<String>()
-        classDeclaration.primaryConstructor
-            ?.parameters
-            ?.forEach { param ->
-                val type = param.type.resolve().declaration as? KSClassDeclaration ?: return@forEach
-                val typeName = type.simpleName.asString()
-
-                if (typeName != className &&
-                    type.packageName.asString().startsWith("com.example")
-                ) {
-                    addDependency(dependenciesList, className, typeName, "*--")
-                }
-            }
-
-        classDeclaration.getDeclaredFunctions()
-            .filterNot { it.simpleName.asString() == "<init>" }
-            .forEach { function ->
-                function.parameters.forEach { param ->
-                    val type = param.type.resolve().declaration as? KSClassDeclaration ?: return@forEach
-                    val typeName = type.simpleName.asString()
-
-                    if (typeName != className &&
-                        type.packageName.asString().startsWith("com.example")
+        val dependencies = buildList {
+            classDeclaration.primaryConstructor
+                ?.parameters
+                .orEmpty()
+                .forEach {
+                    val type = it.type.resolve().declaration as? KSClassDeclaration ?: return@forEach
+                    if (type.simpleName.asString() != className &&
+                        type.packageName.asString().startsWith(BASE_PACKAGE)
                     ) {
-                        addDependency(dependenciesList, className, typeName, "-->")
+                        add("""UmlDependency("$className", "${type.simpleName.asString()}", "*--")""")
                     }
                 }
-                val returnType = function.returnType
-                    ?.resolve()
-                    ?.declaration as? KSClassDeclaration
-
-                val returnTypeName = returnType?.simpleName?.asString()
-
-                if (returnTypeName != null &&
-                    returnTypeName != className &&
-                    returnType.packageName.asString().startsWith("com.example")
-                ) {
-                    addDependency(dependenciesList, className, returnTypeName, "-->")
+            addAll(extractMethodDependencies(classDeclaration, className))
+            classDeclaration.superTypes
+                .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
+                .firstOrNull { it.classKind == ClassKind.CLASS }
+                ?.takeIf {
+                    it.simpleName.asString() != className &&
+                            it.packageName.asString().startsWith(BASE_PACKAGE)
                 }
-            }
+                ?.let {
+                    add("""UmlDependency("$className", "${it.simpleName.asString()}", "--|>")""")
+                }
+            classDeclaration.superTypes
+                .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
+                .filter { it.classKind == ClassKind.INTERFACE }
+                .filter {
+                    it.simpleName.asString() != className &&
+                            it.packageName.asString().startsWith(BASE_PACKAGE)
+                }
+                .forEach {
+                    add("""UmlDependency("$className", "${it.simpleName.asString()}", "..|>")""")
+                }
+        }.distinct()
 
-        val dependenciesCode = if (dependenciesList.isEmpty()) {
-            "emptyList()"
-        } else {
-            dependenciesList.distinct().joinToString(",\n", "listOf(\n", "\n)")
-        }
+        val dependenciesCode =
+            if (dependencies.isEmpty()) "emptyList()"
+            else dependencies.joinToString(",\n", "listOf(\n", "\n)")
+
         val code = """
 package com.example.generated
 
-import com.example.$className
-import uml.UmlClass
-import uml.UmlProperty
-import uml.UmlMethod
-import uml.UmlDependency
+import uml.*
 
-fun $className.uml(): UmlClass {
+fun $functionName(): UmlClass {
     return UmlClass(
         name = "$className",
+        packageName = "$packageName",
+        layer = "$layer",
         properties = listOf(
             $properties
         ),
@@ -141,14 +126,11 @@ fun $className.uml(): UmlClass {
 }
 """.trimIndent()
 
-        val file = codeGenerator.createNewFile(
+        codeGenerator.createNewFile(
             dependencies = Dependencies(false, containingFile),
             packageName = "com.example.generated",
             fileName = "${className}Uml",
-            extensionName = "kt"
-        )
-
-        file.writer().use { it.write(code) }
+        ).writer().use { it.write(code) }
     }
     private fun collectAllClasses(
         root: KSClassDeclaration,
@@ -172,18 +154,76 @@ fun $className.uml(): UmlClass {
         visit(root)
         return result
     }
-    private fun addDependency(
-        dependenciesList: MutableList<String>,
-        from: String,
-        to: String,
-        type: String
-    ) {
-        val alreadyHasStrongRelation = dependenciesList.any {
-            it.contains(""""$from", "$to", "*--"""")
-        }
+    private fun resolveLayer(clazz: KSClassDeclaration): String {
+        val name = clazz.simpleName.asString()
 
-        if (!alreadyHasStrongRelation) {
-            dependenciesList += """UmlDependency("$from", "$to", "$type")"""
+        return when {
+            name.endsWith("Controller") -> "controller"
+            name.endsWith("Service") -> "service"
+            name.endsWith("Repository") -> "repository"
+            name.startsWith("Base") -> "infrastructure"
+            clazz.classKind == ClassKind.CLASS &&
+                    clazz.getDeclaredFunctions().none { it.simpleName.asString() != "<init>" } ->
+                "domain"
+
+            else -> "application"
         }
     }
+    private fun generateProjectUml(classes: List<KSClassDeclaration>) {
+        if (classes.isEmpty()) return
+
+        val classEntries = classes.joinToString(",\n") {
+            val name = it.simpleName.asString()
+            val fn = name.replaceFirstChar { c -> c.lowercase() } + "Uml"
+            "$fn()"
+        }
+
+        val code = """
+package com.example.generated
+
+import uml.*
+
+fun projectUml(): UmlProject {
+    val classes: List<UmlClass> = listOf(
+        $classEntries
+    )
+
+    val dependencies = classes
+        .flatMap { it.dependencies }
+        .distinct()
+
+    return UmlProject(
+        classes = classes,
+        dependencies = dependencies
+    )
+}
+""".trimIndent()
+
+        codeGenerator.createNewFile(
+            dependencies = Dependencies.ALL_FILES, // 🔥 ВАЖНО
+            packageName = "com.example.generated",
+            fileName = "ProjectUml",
+        ).writer().use { it.write(code) }
+    }
+    private fun extractMethodDependencies(
+        clazz: KSClassDeclaration,
+        className: String
+    ): List<String> =
+        clazz.getDeclaredFunctions()
+            .filterNot { it.simpleName.asString() == "<init>" }
+            .flatMap { function ->
+                function.parameters
+                    .mapNotNull { param ->
+                        (param.type.resolve().declaration as? KSClassDeclaration)
+                            ?.takeIf {
+                                it.simpleName.asString() != className &&
+                                        it.packageName.asString().startsWith(BASE_PACKAGE)
+                            }
+                    }
+            }
+            .distinctBy { it.simpleName.asString() }
+            .map {
+                """UmlDependency("$className", "${it.simpleName.asString()}", "-->")"""
+            }
+            .toList()
 }

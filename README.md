@@ -10,26 +10,29 @@
 
 # Текущий этап реализации
 
-На текущем этапе реализован не только анализ структуры классов, но и **анализ зависимостей между ними**.
+На текущем этапе реализован не только анализ структуры классов, но и **анализ зависимостей между ними**, а также **генерация полной UML-диаграммы проекта**.
 
 Процесс включает:
 
 1. Поиск классов, помеченных аннотацией `@UmlDiagram`
 2. Анализ структуры классов:
-    * свойства (поля)
-    * методы
-    * параметры методов
-    * возвращаемые типы
+
+   * свойства (поля)
+   * методы
+   * параметры методов
 3. Анализ зависимостей между классами на основе:
-    * параметров конструктора
-    * параметров методов
-    * возвращаемых типов
+
+   * параметров конструктора
+   * параметров методов
 4. Генерацию Kotlin-API:
 
    ```
    TestClass.uml()
+   projectUml()
    ```
-5. Преобразование модели в PlantUML через DSL
+5. Агрегацию всех классов проекта и построение единой UML-диаграммы
+6. Преобразование модели в PlantUML через DSL
+7. Преобразование модели в PlantUML через DSL
 
 ---
 
@@ -40,18 +43,25 @@
 * зависимости между классами
 * связи между объектами
 * взаимодействие между компонентами системы
+* структуру всего проекта в виде единой UML-диаграммы
+* разделение проекта на архитектурные слои (application, domain и др.)
 
 В UML-диаграмме автоматически появляются связи:
 
 ```
-TestClass --> Order
-TestClass *-- Repository
+TestClass *-- Order
+TestClass --> User
+TestClass --|> BaseService
+TestClass ..|> Repository
+Order *-- User
 ```
 
 где:
 
 * `-->` — зависимость (использование)
 * `*--` — композиция (через конструктор)
+* `--|>`— наследование
+* `..|>`— реализация интерфейса
 
 ---
 
@@ -70,10 +80,10 @@ Code Analysis (structure + dependencies)
         │
         ▼
 Generated API
-(TestClass.uml())
+(TestClass.uml(), projectUml())
         │
         ▼
-UmlClass (модель)
+UmlClass / UmlProject (модель)
         │
         ▼
 UmlDsl
@@ -114,6 +124,7 @@ kotlin-uml-ksp
 │
 ├── uml
 │   ├── UmlClass.kt
+│   ├── UmlProject.kt
 │   ├── UmlDsl.kt
 │   └── PlantUmlRenderer.kt
 │
@@ -143,17 +154,19 @@ annotation class UmlDiagram
 class TestClass(
     val order: Order
 ) {
-    fun process(user: User): Result {}
+    fun process(user: User): Order
 }
 ```
 
 ---
 
 # Генерация PlantUML
-UML-модель можно преобразовать в PlantUML:
+
+UML-модель всего проекта можно преобразовать в PlantUML:
 
 ```kotlin
-val diagram = PlantUmlRenderer.render(uml)
+val project = projectUml()
+val diagram = PlantUmlRenderer.renderProject(project)
 println(diagram)
 ```
 
@@ -163,14 +176,28 @@ println(diagram)
 
 ```
 @startuml
+package "application" {
 class TestClass {
   -order : Order
-
-  +process(user: User): Result
+  +process(user: User): Order
 }
 
+}
+package "domain" {
+class Order {
+  -user : User
+}
+
+class User {
+  -name : String
+}
+
+}
 TestClass *-- Order
 TestClass --> User
+TestClass --|> BaseService
+TestClass ..|> Repository
+Order *-- User
 @enduml
 ```
 
@@ -191,18 +218,10 @@ TestClass --> User
 ```
 
 ---
+
 # Планируемое развитие проекта
 
-Следующие этапы проекта:
-
-### 1. Генерация полной UML-диаграммы проекта
-
-Автоматическое построение:
-
-* class diagrams
-* dependency graphs
-
-### 2. Использование LLM для анализа архитектуры
+### Использование LLM для анализа архитектуры
 
 На основе UML-модели планируется использовать LLM для:
 

@@ -24,8 +24,15 @@ class UmlDsl {
         return lines.joinToString("\n")
     }
 
-    fun dependency(from: String, to: String, type: String) {
+    fun dependency(
+        from: String,
+        to: String,
+        type: String,
+    ) {
         lines += "$from $type $to"
+    }
+    fun raw(line: String) {
+        lines += line
     }
 
     class ClassDsl(private val name: String) {
