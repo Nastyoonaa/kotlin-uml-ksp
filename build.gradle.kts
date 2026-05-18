@@ -19,6 +19,8 @@ ktlint {
 }
 dependencies {
     implementation("net.sourceforge.plantuml:plantuml:1.2024.6")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.json:json:20240303")
     implementation(kotlin("stdlib-jdk8"))
     implementation(project(":processor"))
     ksp(project(":processor"))

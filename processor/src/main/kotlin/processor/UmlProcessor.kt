@@ -20,7 +20,10 @@ class UmlProcessor(
 
         val allClasses = valid
             .flatMap(::collectAllClasses)
-            .filter { it.packageName.asString().startsWith(BASE_PACKAGE) }
+            .filter {
+                it.packageName.asString().startsWith(BASE_PACKAGE) &&
+                        it.containingFile != null
+            }
             .toSet()
 
         allClasses.forEach(::generateUml)
@@ -67,38 +70,42 @@ class UmlProcessor(
             }
 
         val dependencies = buildList {
+
+            val superTypes = classDeclaration.superTypes
+                .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
+                .filter {
+                    it.packageName.asString().startsWith(BASE_PACKAGE) &&
+                            it.containingFile != null
+                }
             classDeclaration.primaryConstructor
                 ?.parameters
                 .orEmpty()
                 .forEach {
                     val type = it.type.resolve().declaration as? KSClassDeclaration ?: return@forEach
                     if (type.simpleName.asString() != className &&
-                        type.packageName.asString().startsWith(BASE_PACKAGE)
+                        type.packageName.asString().startsWith(BASE_PACKAGE) &&
+                        type.containingFile != null
                     ) {
                         add("""UmlDependency("$className", "${type.simpleName.asString()}", "*--")""")
                     }
                 }
+
             addAll(extractMethodDependencies(classDeclaration, className))
-            classDeclaration.superTypes
-                .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
+
+            superTypes
                 .firstOrNull { it.classKind == ClassKind.CLASS }
-                ?.takeIf {
-                    it.simpleName.asString() != className &&
-                            it.packageName.asString().startsWith(BASE_PACKAGE)
-                }
+                ?.takeIf { it.simpleName.asString() != className }
                 ?.let {
                     add("""UmlDependency("$className", "${it.simpleName.asString()}", "--|>")""")
                 }
-            classDeclaration.superTypes
-                .mapNotNull { it.resolve().declaration as? KSClassDeclaration }
+
+            superTypes
                 .filter { it.classKind == ClassKind.INTERFACE }
-                .filter {
-                    it.simpleName.asString() != className &&
-                            it.packageName.asString().startsWith(BASE_PACKAGE)
-                }
+                .filter { it.simpleName.asString() != className }
                 .forEach {
                     add("""UmlDependency("$className", "${it.simpleName.asString()}", "..|>")""")
                 }
+
         }.distinct()
 
         val dependenciesCode =
@@ -217,7 +224,8 @@ fun projectUml(): UmlProject {
                         (param.type.resolve().declaration as? KSClassDeclaration)
                             ?.takeIf {
                                 it.simpleName.asString() != className &&
-                                        it.packageName.asString().startsWith(BASE_PACKAGE)
+                                        it.packageName.asString().startsWith(BASE_PACKAGE) &&
+                                        it.containingFile != null
                             }
                     }
             }
