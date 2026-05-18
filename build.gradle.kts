@@ -2,11 +2,14 @@ plugins {
     kotlin("jvm") version "2.0.20"
     id("com.google.devtools.ksp") version "2.0.20-1.0.25"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
-    application
+
+    `java-library`
+    `maven-publish`
+    signing
 }
 
-group = "com.example"
-version = "1.0-SNAPSHOT"
+group = "io.github.nastyoonaa"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -30,6 +33,50 @@ kotlin {
     jvmToolchain(17)
 }
 
-application {
-    mainClass.set("MainKt")
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("release") {
+
+            groupId = "io.github.nastyoonaa"
+            artifactId = "kotlin-uml-ksp"
+            version = "1.0.0"
+
+            from(components["java"])
+
+            pom {
+                name.set("Kotlin UML Generator")
+                description.set("KSP-based UML generator for Kotlin projects")
+                url.set("https://github.com/Nastyoonaa/kotlin-uml-ksp")
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("nastyoonaa")
+                        name.set("Анастасия Ципенюк")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/Nastyoonaa/kotlin-uml-ksp.git")
+                    developerConnection.set("scm:git:ssh://github.com/Nastyoonaa/kotlin-uml-ksp.git")
+                    url.set("https://github.com/Nastyoonaa/kotlin-uml-ksp")
+                }
+            }
+        }
+    }
+}
+
+signing {
+    sign(publishing.publications["release"])
 }
