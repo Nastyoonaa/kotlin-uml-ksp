@@ -20,13 +20,12 @@ ktlint {
         exclude { it.file.path.contains("generated") }
     }
 }
+
 dependencies {
     implementation("net.sourceforge.plantuml:plantuml:1.2024.6")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.json:json:20240303")
     implementation(kotlin("stdlib-jdk8"))
-    implementation(project(":processor"))
-    ksp(project(":processor"))
 }
 
 kotlin {
@@ -42,11 +41,11 @@ publishing {
     publications {
         create<MavenPublication>("release") {
 
+            from(components["java"])
+
             groupId = "io.github.nastyoonaa"
             artifactId = "kotlin-uml-ksp"
             version = "1.0.0"
-
-            from(components["java"])
 
             pom {
                 name.set("Kotlin UML Generator")
@@ -78,5 +77,7 @@ publishing {
 }
 
 signing {
+    useGpgCmd()
     sign(publishing.publications["release"])
 }
+
