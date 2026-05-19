@@ -1,10 +1,27 @@
+# IntelliJ / Android Studio
+.idea/
+*.iml
+.idea/vcs.xml
+.idea/.name
+
+
+# Gradle
+.gradle/
+build/
+
 # Default ignored files
 /shelf/
 /workspace.xml
-# Ignored default folder with query files
+
+# Queries
 /queries/
-# Datasource local storage ignored files
+
+# Datasources
 /dataSources/
 /dataSources.local.xml
-# Editor-based HTTP Client requests
+
+# HTTP client
 /httpRequests/
+
+# macOS
+.DS_Store

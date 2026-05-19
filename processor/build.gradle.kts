@@ -71,6 +71,5 @@ publishing {
 }
 
 signing {
-    useGpgCmd()
     sign(publishing.publications["processor"])
 }
