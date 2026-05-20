@@ -2,7 +2,6 @@ plugins {
     kotlin("jvm") version "2.0.20"
     id("com.google.devtools.ksp") version "2.0.20-1.0.25"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 
     `java-library`
     `maven-publish`
@@ -41,7 +40,6 @@ java {
 publishing {
     publications {
         create<MavenPublication>("release") {
-
             from(components["java"])
 
             groupId = "io.github.nastyoonaa"
@@ -75,15 +73,16 @@ publishing {
             }
         }
     }
-}
-nexusPublishing {
-    repositories {
-        sonatype {
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 
-            username.set(findProperty("mavenCentralUsername") as String?)
-            password.set(findProperty("mavenCentralPassword") as String?)
+    repositories {
+        maven {
+            name = "central"
+            url = uri("https://central.sonatype.com/api/v1/publisher")
+
+            credentials {
+                username = findProperty("mavenCentralUsername") as String?
+                password = findProperty("mavenCentralPassword") as String?
+            }
         }
     }
 }
@@ -96,4 +95,3 @@ signing {
     )
     sign(publishing.publications["release"])
 }
-
