@@ -29,11 +29,7 @@ jobs:
         uses: gradle/gradle-build-action@v2
 
       - name: Build
-        run: ./gradlew build \
-          -x ktlintCheck \
-          -x ktlintKotlinScriptCheck \
-          -x ktlintMainSourceSetCheck \
-          -x runKtlintCheckOverMainSourceSet
+        run: ./gradlew build -x ktlintCheck -x ktlintKotlinScriptCheck -x ktlintMainSourceSetCheck -x runKtlintCheckOverMainSourceSet
 
       - name: Publish
         run: ./gradlew publish
