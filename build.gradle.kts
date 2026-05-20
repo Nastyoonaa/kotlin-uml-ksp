@@ -3,11 +3,11 @@ plugins {
     id("com.google.devtools.ksp") version "2.0.20-1.0.25"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
 
-    id("com.vanniktech.maven.publish") version "0.29.0"
+    id("com.vanniktech.maven.publish") version "0.34.0"
 }
 
 group = "io.github.nastyoonaa"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -37,7 +37,7 @@ mavenPublishing {
     coordinates(
         "io.github.nastyoonaa",
         "kotlin-uml-ksp",
-        "1.0.0"
+        "1.0.1"
     )
 
     pom {
