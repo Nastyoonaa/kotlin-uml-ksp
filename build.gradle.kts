@@ -89,9 +89,9 @@ publishing {
 
 signing {
     useInMemoryPgpKeys(
-        findProperty("signingInMemoryKeyId") as String?,
-        findProperty("signingInMemoryKey") as String?,
-        findProperty("signingInMemoryKeyPassword") as String?
+        System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKeyId"),
+        System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKey"),
+        System.getenv("ORG_GRADLE_PROJECT_signingInMemoryKeyPassword")
     )
     sign(publishing.publications["release"])
 }
