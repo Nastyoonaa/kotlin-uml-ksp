@@ -29,7 +29,7 @@ jobs:
         uses: gradle/gradle-build-action@v2
 
       - name: Build
-       run: ./gradlew build -x ktlintCheck -x ktlintKotlinScriptCheck -x runKtlintCheckOverKotlinScripts
+        run: ./gradlew build -x ktlintCheck -x ktlintKotlinScriptCheck -x runKtlintCheckOverKotlinScripts
 
       - name: Publish
         run: ./gradlew publishAndReleaseToMavenCentral
