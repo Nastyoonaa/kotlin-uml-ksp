@@ -24,12 +24,11 @@ kotlin {
     jvmToolchain(17)
 }
 
-java {
-    withSourcesJar()
-    withJavadocJar()
-}
-
 mavenPublishing {
+    configure(
+        com.vanniktech.maven.publish.KotlinJvm()
+    )
+
     publishToMavenCentral()
 
     signAllPublications()
