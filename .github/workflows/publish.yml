@@ -28,8 +28,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
 
-      - name: Build
-        run: ./gradlew build -x ktlintCheck -x ktlintKotlinScriptCheck -x runKtlintCheckOverKotlinScripts
-
       - name: Publish
-        run: ./gradlew publishAndReleaseToMavenCentral
+        run: |
+          ./gradlew publishAndReleaseToMavenCentral \
+            -x ktlintCheck \
+            -x ktlintMainSourceSetCheck \
+            -x ktlintKotlinScriptCheck \
+            -x runKtlintCheckOverMainSourceSet \
+            -x runKtlintCheckOverKotlinScripts
