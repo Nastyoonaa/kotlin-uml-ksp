@@ -79,8 +79,8 @@ publishing {
 nexusPublishing {
     repositories {
         sonatype {
-            nexusUrl.set(uri("https://central.sonatype.com/api/v1/publisher"))
-            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/api/v1/publisher"))
+            nexusUrl.set(uri("https://central.sonatype.com/api/v1/publisher/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/api/v1/publisher/"))
 
             username.set(findProperty("mavenCentralUsername") as String?)
             password.set(findProperty("mavenCentralPassword") as String?)
