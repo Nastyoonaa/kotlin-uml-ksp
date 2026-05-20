@@ -31,5 +31,5 @@ jobs:
       - name: Build
         run: ./gradlew build -x ktlintCheck -x ktlintKotlinScriptCheck -x ktlintMainSourceSetCheck -x runKtlintCheckOverMainSourceSet
 
-      - name: Publish
-        run: ./gradlew publish
+      - name: Publish to Maven Central
+        run: ./gradlew publishToMavenCentral
