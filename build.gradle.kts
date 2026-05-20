@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "2.0.20"
     id("com.google.devtools.ksp") version "2.0.20-1.0.25"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 
     `java-library`
     `maven-publish`
@@ -75,11 +76,23 @@ publishing {
         }
     }
 }
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri("https://central.sonatype.com/api/v1/publisher"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/api/v1/publisher"))
+
+            username.set(findProperty("mavenCentralUsername") as String?)
+            password.set(findProperty("mavenCentralPassword") as String?)
+        }
+    }
+}
 
 signing {
     useInMemoryPgpKeys(
-        findProperty("signingKey") as String?,
-        findProperty("signingPassword") as String?
+        findProperty("signingInMemoryKeyId") as String?,
+        findProperty("signingInMemoryKey") as String?,
+        findProperty("signingInMemoryKeyPassword") as String?
     )
     sign(publishing.publications["release"])
 }
