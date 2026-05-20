@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.github.nastyoonaa"
-version = "1.0.1"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
@@ -36,7 +36,7 @@ mavenPublishing {
     coordinates(
         "io.github.nastyoonaa",
         "kotlin-uml-ksp",
-        "1.0.1"
+        "1.0.2"
     )
 
     pom {
